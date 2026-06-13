@@ -11,9 +11,18 @@
         <div>HP <span id="livesEl">5</span></div>
     </div>
 
-    <canvas id="game" width="360" height="560"></canvas>
+    <div id="gameWrap">
+        <div id="atkBar">
+            <div id="atkFill"></div>
+            <span id="atkLabel">ATK</span>
+        </div>
+
+            <canvas id="game" width="360" height="560" tabindex="0"></canvas>
+        </div>
+
         <div id="msg">A / D to flip &nbsp;</div>
         <div id="msg2">SPACE to launch &nbsp;</div>
-            <script src="pinballscript.js"></script>
+        <div id="msg3">W to attack &nbsp;</div>
+        <script src="pinballscript.js"></script>
 </body>
 </html>
