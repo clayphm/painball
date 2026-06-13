@@ -1,0 +1,37 @@
+<html>
+<head>
+    <title>PainBall</title>
+    <link rel="stylesheet" href="pinballdes.css">
+
+</head>
+<body>
+    <div id="ui">
+        <div>SCORE <span id="scoreEl">0</span></div>
+        <div>BEST <span id="bestEl">0</span></div>
+        <div id="hpUi">
+            <span>HP</span>
+            <div id="hpBar">
+                <div id="hpFill"></div>
+                <span id="hpText">100/100</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameWrap">
+        <div id="atkBar">
+            <div id="atkFill"></div>
+            <span id="atkLabel">ATK</span>
+        </div>
+            <canvas id="game" width="420" height="640" tabindex="0"></canvas>
+        <div id="dodgeBar">
+            <div id="dodgeFill"></div>
+            <span id="dodgeLabel">RDY</span>
+        </div>
+    </div>
+
+        <div id="msg">A / D to flip &nbsp;</div>
+        <div id="msg2">SPACE to launch &nbsp;</div>
+        <div id="msg3">W to attack &nbsp;</div>
+        <script src="pinballscript.js"></script>
+</body>
+</html>
