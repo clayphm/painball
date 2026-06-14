@@ -156,3 +156,19 @@ body {
     color: #f5f5f5;
     letter-spacing: 0.5px;
 }
+
+#msg4 {
+    margin-top: -15px;
+    margin-right: -240px;
+    font-size: 13px;
+    color: #f5f5f5;
+    letter-spacing: 0.5px; 
+}
+
+#msg5 {
+    margin-top: 10px;
+    margin-right: -8px;
+    font-size: 13px;
+    color: #f5f5f5;
+    letter-spacing: 0.5px; 
+}
