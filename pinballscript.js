@@ -1,24 +1,38 @@
 //===state-variable===>
-let ballDamage = 1, ballHp = 100, ballMaxHp = 100, score = 0, best = 0;
-let laserDamage = 3;
+let ballDamage = 1, ballHp = 100, ballMaxHp = 100, score = 0, best = localStorage.getItem('best') ? parseInt(localStorage.getItem('best')) : 0;
 let atkCooldown = 0;
 let resetting = false, gameOver = false, waiting = true;
 let explosions = [];
 let gutterCooldown = 0;
-let lastBallX = 210, lastBallY = 135;
+let lastBallX = 210, lastBallY = 540;
 let launchedL = false, launchedR = false;
 let idleTimer = 0;
-let iFrames =0;
-let slowMoTimer = 0;
-let perfectDodgeTextTimer = 0;
-let projectiles = [];
-let prevLAngle = 0.4;
-let prevRAngle = Math.PI - 0.4;
-let lAngle = 0.4, rAngle = Math.PI - 0.4;
-let laserActive = false;
-let laserTimer = 0;
-let laserX = 0, laserY = 0;
-let laserTargetX = 0, laserTargetY = 0;
+let aimPhase = 0;
+const launchSpeed = 12;
+const launchAimSpread = 0.75;
+//===dodge===>
+    let iFrames =0;
+    let slowMoTimer = 0;
+    let perfectDodgeTextTimer = 0;
+    let perfectDodgeAttackReady = false;
+//===projectiles===>
+    let projectiles = [];
+//===flippers===>
+    let prevLAngle = 0.4;
+    let prevRAngle = Math.PI - 0.4;
+    let lAngle = 0.4, rAngle = Math.PI - 0.4;
+//===laser===>
+    let laserActive = false;
+    let laserDamage = 3;
+    let laserTimer = 0;
+    let laserX = 0, laserY = 0;
+    let laserTargetX = 0, laserTargetY = 0;
+    let laserOwner = null;
+//===ball-slashes===>
+    let slashCooldown = 0;
+    let slashes = [];
+    let slashQueue = [];
+    let slashQueueTimer = 0;
 
 //===canva===>
 const canvas = document.getElementById('game');
@@ -28,11 +42,11 @@ const W = 420, H = 640;
     canvas.addEventListener('click', () => canvas.focus())
 
 //===ball===>
-const ball = { x: 210, y: 135, vx: 0, vy: 0, r: 14 };
+const ball = { x: 210, y: 540, vx: 0, vy: 0, r: 14 };
 
 //===enemies===>
 const enemies = [
-    { x: 150, y: 185, r: 24, char: 'C', hit: 0, hp: 5, maxHp: 5, cooldown: 0, shootTimer: 0, shootCount: 0 },
+    { x: 150, y: 185, r: 24, char: 'C', hit: 0, hp: 10, maxHp: 10, cooldown: 0, shootTimer: 0, shootCount: 0 },
 ];
 
 //===boosters===>
@@ -49,6 +63,7 @@ const keys = {};
     if (e.key === 'r' || e.key === 'R') { restartGame(); }
     if (e.key === 'w' || e.key === 'W') { atkNear(); }
     if (e.key === 'Shift') {e.preventDefault(); dodge(); }
+    if (e.key === 'q' || e.key === 'Q') {e.preventDefault(); slashAtk(); }
 });
 
     document.addEventListener('keyup', e => { keys[e.key] = false; });
@@ -64,7 +79,10 @@ function updateUI() {
 //===score===>
 function addScore(n) {
         score += n;
-    if (score > best) best = score;
+    if (score > best) {
+        best = score;
+            localStorage.setItem('best', best);
+        }
         updateUI();
 }
 
@@ -78,6 +96,10 @@ function closestPoint(px, py, ax, ay, bx, by) {
 //===collision===>
 function ptDist(ax, ay, bx, by) {
         return Math.sqrt((ax-bx)**2 + (ay-by)**2);
+}
+
+function isLaserDangerous() {
+    return laserActive && laserOwner !== null && laserTimer > 45;
 }
 
 //===characters===>
@@ -106,32 +128,41 @@ function drawGrid() {
         }
 }
 
+function getLaunchAngle() {
+    return -Math.PI / 2 + Math.sin(aimPhase) * launchAimSpread;
+}
+
 //===start/gameover===>
 function launch() {
     if (gameOver) { restartGame(); return; }
     if (waiting) {
+        const angle = getLaunchAngle();
         waiting = false;
-        ball.vy = -6;
-        ball.vx = -1.5 + Math.random();
+        ball.vx = Math.cos(angle) * launchSpeed;
+        ball.vy = Math.sin(angle) * launchSpeed;
     }
 }
 
 //===reset===>
 function restartGame() {
     ballHp = ballMaxHp; score = 0; gameOver = false; laserDamage = 3;
+        laserActive = false; laserOwner = null;
         boost.forEach(t => { t.hit = false; t.timer = 0; });
-        enemies.forEach(b => { b.hit = 0; b.hp = b.maxHp; });
+        enemies.forEach(b => { b.hit = 0; b.hp = b.maxHp; b.shootTimer = 0; b.shootCount = 0; });
         resetBall();
     updateUI();
 }
 
 //===ball-reset===>
 function resetBall() {
-    ball.x = 210; ball.y = 135;
+    ball.x = 210; ball.y = 540;
     ball.vx = 0;  ball.vy = 0;
-        lastBallX = 210; lastBallY = 135;
+        lastBallX = 210; lastBallY = 540;
+        aimPhase = 0;
         resetting = false;
         waiting = true;
+        perfectDodgeAttackReady = false;
+        iFrames = 180;
 }
 
 //===flipper-collision===>
@@ -207,8 +238,11 @@ function dodge() {
         if (d < nearestDist) { nearestDist = d; nearest = p; }
     });
 
-    const laserDist = laserActive ? ptDist(laserTargetX, laserTargetY, ball.x, ball.y) : Infinity;
+    const laserDist = isLaserDangerous() ? ptDist(laserTargetX, laserTargetY, ball.x, ball.y) : Infinity;
     const perfectDodge = nearestDist < ball.r + 35 || laserDist < ball.r + 35;
+
+    ball.vx *= -0.4;
+    ball.vy *= -0.4;
 
     if (nearest) {
         // check if projectile is below the ball
@@ -226,10 +260,38 @@ function dodge() {
 
     dodgeCooldown = 420;
     iFrames = perfectDodge ? 90 : 65;
+
     if (perfectDodge) {
         slowMoTimer = 120;
         perfectDodgeTextTimer = 70;
+        perfectDodgeAttackReady = true;
     }
+}
+
+//===slash-atk===>
+function slashAtk() {
+    if (waiting || gameOver) return;
+    if (slashCooldown > 0) return;
+
+    let closest = null, closesDist = Infinity;
+    enemies.forEach(b => {
+        const d = ptDist(ball.x, ball.y, b.x, b.y);
+        if (d < closesDist) { closesDist = d; closest = b; }
+
+        });
+        if (!closest) return;
+
+        const dx = closest.x - ball.x;
+        const dy = closest.y - ball.y;
+        const angle = Math.atan2(dy, dx);
+
+        slashQueue = [
+            { angle: angle - 0.3, delay: 0  },
+            { angle: angle,       delay: 10 },
+            { angle: angle + 0.3, delay: 20 },
+        ];
+        slashCooldown = 240;
+        slashQueueTimer = 0
 }
 
 //===update===>
@@ -240,6 +302,22 @@ function update() {
     if (iFrames > 0) iFrames--;
     if (slowMoTimer > 0) slowMoTimer--;
     if (perfectDodgeTextTimer > 0) perfectDodgeTextTimer--;
+    if (slashCooldown > 0) slashCooldown--;
+    if (slashQueue.length > 0) {
+        slashQueueTimer++;
+        if (slashQueueTimer >= slashQueue[0].delay) {
+            const s = slashQueue.shift();
+            slashes.push({
+                x: ball.x, y: ball.y,
+                vx: Math.cos(s.angle) * 8,
+                vy: Math.sin(s.angle) * 8,
+                life:40,
+                hit: false,
+                angle: s.angle
+            });
+        }
+    }
+
     const worldSpeed = slowMoTimer > 0 ? 0.35 : 1;
 
 //===last-position===>
@@ -268,8 +346,12 @@ function update() {
         if (ball.y > H - 10 && !resetting) {
         resetting = true;
         ballHp = Math.max(0, ballHp - 1);
-        if (score > best) best = score;
+        if (score > best) {
+            best = score;
+            localStorage.setItem('best', best);
+        }
         updateUI();
+
         if (ballHp <= 0) { gameOver = true; return; }
         setTimeout(resetBall, 600);
     }
@@ -321,30 +403,33 @@ function update() {
 
 //===enemies===>
     enemies.forEach(b => {
-        b.shootTimer += worldSpeed;
-        if (b.shootTimer > 180) {
-            b.shootTimer = 0;
-            b.shootCount++;
+        if (!(laserActive && laserOwner === b)) {
+            b.shootTimer += worldSpeed;
+            if (b.shootTimer > 180) {
+                b.shootTimer = 0;
+                b.shootCount++;
 
-            const dx = ball.x - b.x;
-            const dy = ball.y - b.y;
-            const d = Math.sqrt(dx*dx + dy*dy);
+                const dx = ball.x - b.x;
+                const dy = ball.y - b.y;
+                const d = Math.sqrt(dx*dx + dy*dy);
 
-            if (b.shootCount % 5 === 0) {
-                laserActive = true;
-                laserTimer = 180;
-                laserX = b.x;
-                laserY = b.y;
-                laserTargetX = ball.x;
-                laserTargetY = ball.y;
-            } else if (d > 0) {
-                projectiles.push({
-                    x: b.x,
-                    y: b.y,
-                    vx: (dx / d) * 2.4,
-                    vy: (dy / d) * 2.4,
-                    r: 5
-                });
+                if (b.shootCount % 5 === 0) {
+                    laserActive = true;
+                    laserTimer = 360;
+                    laserX = b.x;
+                    laserY = b.y;
+                    laserTargetX = ball.x;
+                    laserTargetY = ball.y;
+                    laserOwner = b;
+                } else if (d > 0) {
+                    projectiles.push({
+                        x: b.x,
+                        y: b.y,
+                        vx: (dx / d) * 2.4,
+                        vy: (dy / d) * 2.4,
+                        r: 5
+                    });
+                }
             }
         }
 
@@ -360,15 +445,29 @@ function update() {
             ball.x  = b.x + nx * (ball.r + b.r + 1);
             ball.y  = b.y + ny * (ball.r + b.r + 1);
             b.hit = 8; b.cooldown = 20;
-            if (b.hp !== undefined) b.hp -= ballDamage;
+            const damage = perfectDodgeAttackReady ? 3 : ballDamage;
+            if (b.hp !== undefined) b.hp -= damage;
+            if (perfectDodgeAttackReady) {
+                perfectDodgeAttackReady = false;
+                dodgeCooldown = 0;
+            }
             if (b.hp <= 0) {
                 explosions.push({ x: b.x, y: b.y, r: 10, alpha: 1.0 });
+                if (laserOwner === b) {
+                    laserActive = false;
+                    laserOwner = null;
+                    laserTimer = 0;
+                }
                 Object.assign(b, {
                     x:    35  + Math.random() * 350,
                     y:    70  + Math.random() * 300,
                     hp:   b.maxHp,
                     char: ['⭐','💥','🌟','✨','💎','🔥','💫','⚡'][Math.floor(Math.random()*8)]
                 });
+            }
+            if (b.hp === b.maxHp) {
+                b.shootTimer = 0;
+                b.shootCount = 0;
             }
             addScore(100);
         }
@@ -377,16 +476,22 @@ function update() {
 //===laser===>
     if (laserActive) {
         laserTimer -= worldSpeed;
-        if (laserTimer <= 0) { laserActive = false; }
+        if (laserTimer <= 0) {
+            if (laserOwner !== null) laserOwner.shootTimer = 0;
+            laserActive = false;
+            laserOwner = null;
+        }
 
             const laserSlow = slowMoTimer > 0 ? 0.15 : 1;
             laserTargetX += (ball.x - laserTargetX) * 0.06 * worldSpeed * laserSlow;
             laserTargetY += (ball.y - laserTargetY) * 0.06 * worldSpeed * laserSlow;
 
-        if (iFrames <= 0 && ptDist(laserTargetX, laserTargetY, ball.x, ball.y) < ball.r + 12) {
-            if (Math.random() < 0.05) {
+        if (isLaserDangerous() && iFrames <= 0 && ptDist(laserTargetX, laserTargetY, ball.x, ball.y) < ball.r + 12) {
+
+//===dmg-per-frame===>
+            if (Math.random() < 0.04) {
                 ballHp = Math.max(0, ballHp - Math.floor(laserDamage));
-                laserDamage += 0.5;
+                laserDamage += 0.2;
                 updateUI();
                 if (ballHp <= 0) gameOver = true;
 
@@ -394,7 +499,7 @@ function update() {
         }
     }
 
-    // explosions
+//===explosions===>
     explosions.forEach(e => { e.r += 3 * worldSpeed; e.alpha -= 0.06 * worldSpeed; });
     explosions = explosions.filter(e => e.alpha > 0);
 
@@ -428,6 +533,35 @@ function update() {
         }
         return p.y < H && p.y > 0 && p.x > 0 && p.x < W && !hit;
     });
+
+    slashes.forEach(s => {
+        s.x += s.vx;
+        s.y += s.vy;
+        s.life--;
+
+        if (!s.hit) {
+            enemies.forEach(b => {
+                const d = ptDist(s.x, s.y, b.x, b.y);
+                if (d < b.r + 10) {
+                    s.hit =true;
+                    b.hp -= 2;
+                    b.hit = 8;
+                    explosions.push({ x: s.x, y: s.y, r: 6, alpha: 1.0 });
+                    if (b.hp <= 0) {
+                        explosions.push({ x: b.x, y: b.y, r: 10, alpha: 1.0});
+                        Object.assign(b, {
+                            x: 35 + Math.random() * 350,
+                            y: 70 + Math.random() * 300,
+                            hp: b.maxHp,
+                            char: ['⭐','💥','🌟','✨','💎','🔥','💫','⚡'][Math.floor(Math.random()*8)]
+                        });
+                    }
+                    addScore(50);
+                }
+            });
+        }
+    });
+    slashes = slashes.filter(s => s.life > 0 && !s.hit);
 }
 
 // --- draw ---
@@ -561,8 +695,8 @@ function draw() {
 //===laser===>
     if (laserActive) {
         ctx.save();
-        ctx.strokeStyle = `rgba(255, 136, 0, ${laserTimer / 180})`;
-        ctx.lineWidth = 10;
+        ctx.strokeStyle = `rgba(255, 136, 0, ${laserTimer / 360})`;
+        ctx.lineWidth = 13;
         ctx.shadowColor = '#ff4400';
         ctx.shadowBlur = 20;
         ctx.setLineDash([8, 4]);
@@ -575,8 +709,8 @@ function draw() {
     
     // laser tip circle
         ctx.beginPath();
-        ctx.arc(laserTargetX, laserTargetY, 12, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(255, 80, 0, ${laserTimer / 180})`;
+        ctx.arc(laserTargetX, laserTargetY, 15, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(255, 80, 0, ${laserTimer / 360})`;
         ctx.fill();
         ctx.restore();
 }
@@ -584,6 +718,21 @@ function draw() {
     // flippers
     drawFlipper(84,  565, lAngle);
     drawFlipper(335, 565, rAngle);
+
+
+//===slashes===> 
+    slashes.forEach(s => {
+    ctx.save();
+    ctx.strokeStyle = `rgba(180, 220, 255, ${s.life / 40})`;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#44ccff';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 14, s.angle - Math.PI/2, s.angle + Math.PI/2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+});
 
     // ball
     ctx.save();
@@ -610,6 +759,41 @@ function draw() {
 
     // waiting
     if (waiting && !gameOver) {
+        aimPhase += 0.025;
+        const angle = getLaunchAngle();
+        const arrowLen = 76;
+        const arrowStartX = ball.x;
+        const arrowStartY = ball.y - ball.r - 8;
+        const arrowEndX = arrowStartX + Math.cos(angle) * arrowLen;
+        const arrowEndY = arrowStartY + Math.sin(angle) * arrowLen;
+        const headSize = 10;
+
+        ctx.save();
+        ctx.strokeStyle = '#44ccff';
+        ctx.fillStyle = '#44ccff';
+        ctx.shadowColor = '#44ccff';
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(arrowStartX, arrowStartY);
+        ctx.lineTo(arrowEndX, arrowEndY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(arrowEndX, arrowEndY);
+        ctx.lineTo(
+            arrowEndX - Math.cos(angle - 0.45) * headSize,
+            arrowEndY - Math.sin(angle - 0.45) * headSize
+        );
+        ctx.lineTo(
+            arrowEndX - Math.cos(angle + 0.45) * headSize,
+            arrowEndY - Math.sin(angle + 0.45) * headSize
+        );
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
         ctx.fillStyle    = 'rgba(243, 243, 243, 0.85)';
         ctx.font         = '500 14px system-ui';
         ctx.textAlign    = 'center';
