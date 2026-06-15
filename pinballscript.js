@@ -225,7 +225,7 @@ function atkNear() {
 }
 
 //===dodge===>
-let dodgeCooldown = 500;
+let dodgeCooldown = 0;
 
 function dodge() {
     if (waiting || gameOver) return;
@@ -265,6 +265,9 @@ function dodge() {
         slowMoTimer = 120;
         perfectDodgeTextTimer = 70;
         perfectDodgeAttackReady = true;
+        atkCooldown = 0;
+        slashCooldown = 0;
+        dodgeCooldown = 0;
     }
 }
 
@@ -453,11 +456,9 @@ function update() {
             }
             if (b.hp <= 0) {
                 explosions.push({ x: b.x, y: b.y, r: 10, alpha: 1.0 });
-                if (laserOwner === b) {
                     laserActive = false;
                     laserOwner = null;
                     laserTimer = 0;
-                }
                 Object.assign(b, {
                     x:    35  + Math.random() * 350,
                     y:    70  + Math.random() * 300,
@@ -534,6 +535,7 @@ function update() {
         return p.y < H && p.y > 0 && p.x > 0 && p.x < W && !hit;
     });
 
+//===slashes===>
     slashes.forEach(s => {
         s.x += s.vx;
         s.y += s.vy;
@@ -549,6 +551,9 @@ function update() {
                     explosions.push({ x: s.x, y: s.y, r: 6, alpha: 1.0 });
                     if (b.hp <= 0) {
                         explosions.push({ x: b.x, y: b.y, r: 10, alpha: 1.0});
+                        laserActive = false;
+                        laserOwner = null
+                        laserTimer = 0;
                         Object.assign(b, {
                             x: 35 + Math.random() * 350,
                             y: 70 + Math.random() * 300,
@@ -682,16 +687,25 @@ function draw() {
 
 //===ball-atk===>
     const fill = atkCooldown > 0 ? (atkCooldown / 300) * 100 : 100;
-        document.getElementById('atkFill').style.height = fill + '%';
+        document.getElementById('atkFill').style.width = fill + '%';
         document.getElementById('atkFill').style.background = atkCooldown > 0 ? '#ff4444' : '#44ff88';
         document.getElementById('atkLabel').textContent = atkCooldown > 0 ? Math.ceil(atkCooldown/60) + 's' : 'ATK';
 
 //===dodge===>
     const dodgeFill = dodgeCooldown > 0 ? (dodgeCooldown / 500) * 100 : 100;
-        document.getElementById('dodgeFill').style.height = dodgeFill + '%';
+        document.getElementById('dodgeFill').style.width = dodgeFill + '%';
         document.getElementById('dodgeFill').style.background = dodgeCooldown > 0 ? '#4444ff' : '#44ccff';
         document.getElementById('dodgeLabel').textContent = dodgeCooldown > 0 ? Math.ceil(dodgeCooldown/60) + 's' : 'DGE';
 
+//===Q-skill===>
+    const slashFill = slashCooldown > 0 ? (slashCooldown / 240) * 100 : 100;
+    if (document.getElementById('slashFill')) {
+        document.getElementById('slashFill').style.width = slashFill + '%';
+        document.getElementById('slashFill').style.background = slashCooldown > 0 ? '#4444ff' : '#44ccff';
+    }
+    if (document.getElementById('slashText')) {
+        document.getElementById('slashText').textContent = slashCooldown > 0 ? Math.ceil(slashCooldown/60) + 's' : 'SQ1';
+    }
 //===laser===>
     if (laserActive) {
         ctx.save();
