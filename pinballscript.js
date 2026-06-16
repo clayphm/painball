@@ -708,7 +708,7 @@ function update() {
           x: 35 + Math.random() * 350,
           y: 70 + Math.random() * 300,
           hp: b.maxHp,
-          char: [" "][Math.floor(Math.random() * 8)],
+          char: " ",
         });
       }
       if (b.hp === b.maxHp) {
