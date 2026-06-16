@@ -1,150 +1,215 @@
- * { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
 body {
-    background: #181818;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #181818;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: "Segoe UI", system-ui, sans-serif;
 }
 
-#atkBar, #dodgeBar, #slashBar {
-    position: absolute;
-    left: -140px;
-    width: 120px;
-    height: 18px;
-    background: #222;
-    border: 2px solid #f5f5f5;
-    overflow: visible;
+#atkBar,
+#dodgeBar,
+#slashBar {
+  position: absolute;
+  left: -140px;
+  width: 120px;
+  height: 18px;
+  background: #222;
+  border: 2px solid #f5f5f5;
+  overflow: visible;
 }
 
-#atkBar { top: calc(50% - 40px); }
-#dodgeBar { top: 50%; }
-#slashBar { top: calc(50% + 40px); }
-
-#atkFill, #dodgeFill, #slashFill {
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 100%;
-    width: 100%;
-    transition: width 0.1s;
-    z-index: 0;
+#atkBar {
+  top: calc(50% - 40px);
+}
+#dodgeBar {
+  top: 50%;
+}
+#slashBar {
+  top: calc(50% + 40px);
 }
 
-#atkLabel, #dodgeLabel, #slashText {
-    position: absolute;
-    left: -28px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 9px;
-    color: #f5f5f5;
-    white-space: nowrap;
-    z-index: 1;
+#atkFill,
+#dodgeFill,
+#slashFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  transition: width 0.1s;
+  z-index: 0;
+}
+
+#atkLabel,
+#dodgeLabel,
+#slashText {
+  position: absolute;
+  left: -28px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  color: #f5f5f5;
+  white-space: nowrap;
+  z-index: 1;
 }
 
 #gameWrap {
-    position: relative;
-    display: inline-block;
+  position: relative;
+  display: inline-block;
 }
 
-#game { outline: none;
-    border-radius: 10px;
-    border: 6px solid #f5f5f5;
-    box-shadow: 0 0 40px rgba(100, 80, 255, 0.25);
-    display: block;
+#game {
+  outline: none;
+  border-radius: 10px;
+  border: 6px solid #f5f5f5;
+  box-shadow: 0 0 40px rgba(100, 80, 255, 0.25);
+  display: block;
 }
 
 #ui {
-    display: flex;
-    gap: 32px;
-    margin-bottom: 10px;
-    color: #f5f5f5;
-    font-size: 15px;
-    letter-spacing: 1px;
+  display: flex;
+  gap: 32px;
+  margin-bottom: 10px;
+  color: #f5f5f5;
+  font-size: 15px;
+  letter-spacing: 1px;
 }
 
-#ui span { 
-    color: white; 
-    font-weight: 600; 
-    font-size: 18px; 
+#ui span {
+  color: white;
+  font-weight: 600;
+  font-size: 18px;
 }
 
 #hpUi {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 #hpUi > span {
-    font-size: 15px;
-    letter-spacing: 1px;
+  font-size: 15px;
+  letter-spacing: 1px;
 }
 
 #hpBar {
-    position: relative;
-    width: 120px;
-    height: 18px;
-    background: #211;
-    border: 2px solid #f5f5f5;
+  position: relative;
+  width: 120px;
+  height: 18px;
+  background: #211;
+  border: 2px solid #f5f5f5;
 }
 
 #hpFill {
-    height: 100%;
-    width: 100%;
-    background: #44ff88;
-    transition: width 0.12s;
+  height: 100%;
+  width: 100%;
+  background: #44ff88;
+  transition: width 0.12s;
 }
 
 #hpText {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 11px;
-    font-weight: 700;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+#ultBar {
+  position: absolute;
+  left: -140px;
+  width: 120px;
+  height: 18px;
+  background: #222;
+  border: 2px solid #f5f5f5;
+  overflow: visible;
+  top: calc(50% + 80px);
+}
+
+#ultFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  transition: width 0.1s;
+  z-index: 0;
+}
+
+#ultText {
+  position: absolute;
+  left: -28px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  color: #f5f5f5;
+  white-space: nowrap;
+  z-index: 1;
 }
 
 #msg {
-    margin-top: 10px;
-    margin-left: -240px;
-    font-size: 13px;
-    color: #f5f5f5;
-    letter-spacing: 0.5px;
+  margin-top: 10px;
+  margin-left: -240px;
+  font-size: 13px;
+  color: #f5f5f5;
+  letter-spacing: 0.5px;
 }
 
 #msg2 {
-    margin-top: -15px;
-    margin-right: -240px;
-    font-size: 13px;
-    color: #f5f5f5;
-    letter-spacing: 0.5px;
+  margin-top: -15px;
+  margin-right: -240px;
+  font-size: 13px;
+  color: #f5f5f5;
+  letter-spacing: 0.5px;
 }
 
 #msg3 {
-    margin-top: 5px;
-    margin-right: 240px;
-    font-size: 13px;
-    color: #f5f5f5;
-    letter-spacing: 0.5px;
+  margin-top: 5px;
+  margin-right: 240px;
+  font-size: 13px;
+  color: #f5f5f5;
+  letter-spacing: 0.5px;
 }
 
 #msg4 {
-    margin-top: -15px;
-    margin-right: -240px;
-    font-size: 13px;
-    color: #f5f5f5;
-    letter-spacing: 0.5px; 
+  margin-top: -15px;
+  margin-right: -240px;
+  font-size: 13px;
+  color: #f5f5f5;
+  letter-spacing: 0.5px;
 }
 
 #msg5 {
-    margin-top: 10px;
-    margin-right: -8px;
-    font-size: 13px;
-    color: #f5f5f5;
-    letter-spacing: 0.5px; 
+  margin-top: 10px;
+  margin-right: -8px;
+  font-size: 13px;
+  color: #f5f5f5;
+  letter-spacing: 0.5px;
+}
+
+#msg6 {
+  margin-top: 5px;
+  margin-right: 240px;
+  font-size: 13px;
+  color: #f5f5f5;
+  letter-spacing: 0.5px;
+}
+
+#msg7 {
+  margin-top: -15px;
+  margin-right: -240px;
+  font-size: 13px;
+  color: #f5f5f5;
+  letter-spacing: 0.5px;
 }
