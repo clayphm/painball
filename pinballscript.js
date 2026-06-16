@@ -1,836 +1,1200 @@
-//===state-variable===>
-let ballDamage = 1, ballHp = 100, ballMaxHp = 100, score = 0, best = localStorage.getItem('best') ? parseInt(localStorage.getItem('best')) : 0;
+//====state-variable====>
+
+//==ball==>
+let ballDamage = 1,
+  ballHp = 100,
+  ballMaxHp = 100;
+//==score==>
+let score = 0,
+  best = localStorage.getItem("best")
+    ? parseInt(localStorage.getItem("best"))
+    : 0;
+//==atk-cd==>
 let atkCooldown = 0;
-let resetting = false, gameOver = false, waiting = true;
+//==game-stat==>
+let resetting = false,
+  gameOver = false,
+  waiting = true;
+//==effects==>
 let explosions = [];
+//==gut-cd==>
 let gutterCooldown = 0;
-let lastBallX = 210, lastBallY = 540;
-let launchedL = false, launchedR = false;
+//==last-ball==>
+let lastBallX = 210,
+  lastBallY = 530;
+//==launch==>
+let launchedL = false,
+  launchedR = false;
+//==idle==>
 let idleTimer = 0;
 let aimPhase = 0;
 const launchSpeed = 12;
 const launchAimSpread = 0.75;
 //===dodge===>
-    let iFrames =0;
-    let slowMoTimer = 0;
-    let perfectDodgeTextTimer = 0;
-    let perfectDodgeAttackReady = false;
+let iFrames = 0;
+let slowMoTimer = 0;
+let perfectDodgeTextTimer = 0;
+let perfectDodgeAttackReady = false;
 //===projectiles===>
-    let projectiles = [];
+let projectiles = [];
 //===flippers===>
-    let prevLAngle = 0.4;
-    let prevRAngle = Math.PI - 0.4;
-    let lAngle = 0.4, rAngle = Math.PI - 0.4;
+let prevLAngle = 0.4;
+let prevRAngle = Math.PI - 0.4;
+let lAngle = 0.4,
+  rAngle = Math.PI - 0.4;
 //===laser===>
-    let laserActive = false;
-    let laserDamage = 3;
-    let laserTimer = 0;
-    let laserX = 0, laserY = 0;
-    let laserTargetX = 0, laserTargetY = 0;
-    let laserOwner = null;
+let laserActive = false;
+let laserDamage = 3;
+let laserTimer = 0;
+let laserX = 0,
+  laserY = 0;
+let laserTargetX = 0,
+  laserTargetY = 0;
+let laserOwner = null;
 //===ball-slashes===>
-    let slashCooldown = 0;
-    let slashes = [];
-    let slashQueue = [];
-    let slashQueueTimer = 0;
+let slashCooldown = 0;
+let slashes = [];
+let slashQueue = [];
+let slashQueueTimer = 0;
+//===ultimate===>
+let ultCooldown = 0;
+let ultActive = false;
+let ultStep = 0;
+let ultTimer = 0;
+let ultEnemy = null;
+let frozenSlashes = [];
+let ultSavedVx = 0,
+  ultSavedVy = 0;
+//===impact-frames===>
+let impactFrames = 0;
+let impactX = 0;
+let impactY = 0;
 
 //===canva===>
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-const W = 420, H = 640;
-    canvas.focus();
-    canvas.addEventListener('click', () => canvas.focus())
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const W = 420,
+  H = 640;
+canvas.focus();
+canvas.addEventListener("click", () => canvas.focus());
 
 //===ball===>
-const ball = { x: 210, y: 540, vx: 0, vy: 0, r: 14 };
+const ball = { x: 210, y: 530, vx: 0, vy: 0, r: 14 };
 
 //===enemies===>
 const enemies = [
-    { x: 150, y: 185, r: 24, char: 'C', hit: 0, hp: 10, maxHp: 10, cooldown: 0, shootTimer: 0, shootCount: 0 },
+  {
+    x: 150,
+    y: 185,
+    r: 24,
+    char: " ",
+    hit: 0,
+    hp: 10,
+    maxHp: 10,
+    cooldown: 0,
+    shootTimer: 0,
+    shootCount: 0,
+  },
 ];
 
 //===boosters===>
 const boost = [
-    { x: 140, y: 280, w: 34, h: 20, char: 'T', hit: false, timer: 0 },
-    { x: 245, y: 280,  w: 34, h: 20, char: 'A', hit: false, timer: 0 },
+  { x: 140, y: 280, w: 34, h: 20, char: " ", hit: false, timer: 0 },
+  { x: 245, y: 280, w: 34, h: 20, char: " ", hit: false, timer: 0 },
+];
+
+//===spike===>
+const spikes = [
+  { x: W / 2, y: H - 40, w: 28, h: 20 },
+  { x: 163 + 20, y: H - 40, w: 28, h: 20 },
+  { x: W - 163 - 20, y: H - 40, w: 28, h: 20 },
 ];
 
 //===keys===>
 const keys = {};
-    document.addEventListener('keydown', e => {
-        keys[e.key] = true;
-    if (e.key === ' ') { e.preventDefault(); launch(); }
-    if (e.key === 'r' || e.key === 'R') { restartGame(); }
-    if (e.key === 'w' || e.key === 'W') { atkNear(); }
-    if (e.key === 'Shift') {e.preventDefault(); dodge(); }
-    if (e.key === 'q' || e.key === 'Q') {e.preventDefault(); slashAtk(); }
+document.addEventListener("keydown", (e) => {
+  keys[e.key] = true;
+  if (e.key === " ") {
+    e.preventDefault();
+    launch();
+  }
+  if (e.key === "r" || e.key === "R") {
+    restartGame();
+  }
+  if (e.key === "w" || e.key === "W") {
+    atkNear();
+  }
+  if (e.key === "Shift") {
+    e.preventDefault();
+    dodge();
+  }
+  if (e.key === "q" || e.key === "Q") {
+    e.preventDefault();
+    slashAtk();
+  }
+  if (e.key === "e" || e.key === "E") {
+    e.preventDefault();
+    ult();
+  }
 });
 
-    document.addEventListener('keyup', e => { keys[e.key] = false; });
+document.addEventListener("keyup", (e) => {
+  keys[e.key] = false;
+});
 
 //===UI===>
 function updateUI() {
-    document.getElementById('scoreEl').textContent = score;
-    document.getElementById('bestEl').textContent = best;
-    document.getElementById('hpText').textContent = ballHp + '/' + ballMaxHp;
-    document.getElementById('hpFill').style.width = Math.max(0, (ballHp / ballMaxHp) * 100) + '%';
+  document.getElementById("scoreEl").textContent = score;
+  document.getElementById("bestEl").textContent = best;
+  document.getElementById("hpText").textContent = ballHp + "/" + ballMaxHp;
+  document.getElementById("hpFill").style.width =
+    Math.max(0, (ballHp / ballMaxHp) * 100) + "%";
 }
 
 //===score===>
 function addScore(n) {
-        score += n;
-    if (score > best) {
-        best = score;
-            localStorage.setItem('best', best);
-        }
-        updateUI();
+  score += n;
+  if (score > best) {
+    best = score;
+    localStorage.setItem("best", best);
+  }
+  updateUI();
 }
 
 //===ball-line===>
 function closestPoint(px, py, ax, ay, bx, by) {
-    const dx = bx - ax, dy = by - ay;
-    const t = Math.max(0, Math.min(1, ((px-ax)*dx + (py-ay)*dy) / (dx*dx + dy*dy)));
-        return { x: ax + t*dx, y: ay + t*dy };
+  const dx = bx - ax,
+    dy = by - ay;
+  const t = Math.max(
+    0,
+    Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)),
+  );
+  return { x: ax + t * dx, y: ay + t * dy };
 }
 
 //===collision===>
 function ptDist(ax, ay, bx, by) {
-        return Math.sqrt((ax-bx)**2 + (ay-by)**2);
+  return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
 }
 
 function isLaserDangerous() {
-    return laserActive && laserOwner !== null && laserTimer > 45;
+  return laserActive && laserOwner !== null && laserTimer > 45;
 }
 
 //===characters===>
 function drawChar(char, x, y, size) {
-    ctx.font = `${size}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(char, x, y);
+  ctx.font = `${size}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(char, x, y);
 }
 
 //===bounce===>
 function wallBounce() {
-    if (ball.x < 14 + ball.r) { ball.vx = Math.abs(ball.vx) * 0.85; ball.x = 14 + ball.r; }
-    if (ball.x > W-14-ball.r) { ball.vx = -Math.abs(ball.vx) * 0.85; ball.x = W-14-ball.r; }
-    if (ball.y < 14 + ball.r) { ball.vy = Math.abs(ball.vy) * 0.7;   ball.y = 14 + ball.r; }
+  if (ball.x < 14 + ball.r) {
+    ball.vx = Math.abs(ball.vx) * 0.85;
+    ball.x = 14 + ball.r;
+  }
+  if (ball.x > W - 14 - ball.r) {
+    ball.vx = -Math.abs(ball.vx) * 0.85;
+    ball.x = W - 14 - ball.r;
+  }
+  if (ball.y < 14 + ball.r) {
+    ball.vy = Math.abs(ball.vy) * 0.7;
+    ball.y = 14 + ball.r;
+  }
+  if (ball.y > H - 14 - ball.r) {
+    ball.vy = -Math.abs(ball.vy) * 0.85;
+    ball.y = H - 14 - ball.r;
+  }
 }
 
 //===grid===>
 function drawGrid() {
-    ctx.fillStyle = 'rgba(100,90,200,0.07)';
-    for (let gx = 28; gx < W; gx += 24)
-        for (let gy = 28; gy < H; gy += 24) {
-            ctx.beginPath();
-            ctx.arc(gx, gy, 1.5, 0, Math.PI*2);
-            ctx.fill();
-        }
+  ctx.fillStyle = "rgba(100,90,200,0.07)";
+  for (let gx = 28; gx < W; gx += 24)
+    for (let gy = 28; gy < H; gy += 24) {
+      ctx.beginPath();
+      ctx.arc(gx, gy, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
 }
 
+//===LaunchAngle===>
 function getLaunchAngle() {
-    return -Math.PI / 2 + Math.sin(aimPhase) * launchAimSpread;
+  return -Math.PI / 2 + Math.sin(aimPhase) * launchAimSpread;
 }
 
 //===start/gameover===>
 function launch() {
-    if (gameOver) { restartGame(); return; }
-    if (waiting) {
-        const angle = getLaunchAngle();
-        waiting = false;
-        ball.vx = Math.cos(angle) * launchSpeed;
-        ball.vy = Math.sin(angle) * launchSpeed;
-    }
+  if (gameOver) {
+    restartGame();
+    return;
+  }
+  if (waiting) {
+    const angle = getLaunchAngle();
+    waiting = false;
+    ball.vx = Math.cos(angle) * launchSpeed;
+    ball.vy = Math.sin(angle) * launchSpeed;
+  }
 }
 
 //===reset===>
 function restartGame() {
-    ballHp = ballMaxHp; score = 0; gameOver = false; laserDamage = 3;
-        laserActive = false; laserOwner = null;
-        boost.forEach(t => { t.hit = false; t.timer = 0; });
-        enemies.forEach(b => { b.hit = 0; b.hp = b.maxHp; b.shootTimer = 0; b.shootCount = 0; });
-        resetBall();
-    updateUI();
+  ballHp = ballMaxHp;
+  score = 0;
+  gameOver = false;
+  laserDamage = 3;
+  laserActive = false;
+  laserOwner = null;
+  boost.forEach((t) => {
+    t.hit = false;
+    t.timer = 0;
+  });
+  enemies.forEach((b) => {
+    b.hit = 0;
+    b.hp = b.maxHp;
+    b.shootTimer = 0;
+    b.shootCount = 0;
+  });
+  resetBall();
+  updateUI();
 }
 
 //===ball-reset===>
 function resetBall() {
-    ball.x = 210; ball.y = 540;
-    ball.vx = 0;  ball.vy = 0;
-        lastBallX = 210; lastBallY = 540;
-        aimPhase = 0;
-        resetting = false;
-        waiting = true;
-        perfectDodgeAttackReady = false;
-        iFrames = 180;
+  ball.x = 210;
+  ball.y = 530;
+  ball.vx = 0;
+  ball.vy = 0;
+  lastBallX = 210;
+  lastBallY = 530;
+  aimPhase = 0;
+  resetting = false;
+  waiting = true;
+  perfectDodgeAttackReady = false;
+  iFrames = 180;
 }
 
 //===flipper-collision===>
 function flipperCollide(cx, cy, angle, isLeft) {
-    const ex = cx + Math.cos(angle) * 70;
-    const ey = cy + Math.sin(angle) * 70;
+  const ex = cx + Math.cos(angle) * 70;
+  const ey = cy + Math.sin(angle) * 70;
 
-//===flipper-tip-collision===>
-    const cp = closestPoint(ball.x, ball.y, cx, cy, ex, ey);
-    const d  = ptDist(ball.x, ball.y, cp.x, cp.y);
+  //===flipper-tip-collision===>
+  const cp = closestPoint(ball.x, ball.y, cx, cy, ex, ey);
+  const d = ptDist(ball.x, ball.y, cp.x, cp.y);
 
-    if (d > ball.r) return;
+  if (d > ball.r + 6) return;
 
-    const flipping = isLeft ? keys['a'] : keys['d'];
+  const flipping = isLeft ? keys["a"] : keys["d"];
 
-//===flipper-push===>
+  //===flipper-push===>
+  if (ball.r - d > 0.5) {
     ball.y = cp.y - ball.r;
+  }
 
-//===flipper-tip-push===>
-    const tipDist = ptDist(cp.x, cp.y, ex, ey);
-        if (tipDist < 12) {
-        ball.x += isLeft ? 5 : -5;
-}
-
-//===flip-launch-bounce===>
-    if (flipping) {
-        ball.vy = -12;
-        ball.vx = isLeft ? -6 : 6;
-        gutterCooldown = 25;
-        idleTimer = 0;
-    } else {
+  //===flip-launch-bounce===>
+  if (flipping) {
+    ball.vy = -12;
+    ball.vx = isLeft ? -6 : 6;
+    gutterCooldown = 25;
+    idleTimer = 0;
+  } else {
     ball.vy = -ball.vy * 0.3;
-    ball.vx *= 0.97;
+    ball.vx *= 0.8;
     ball.vx += isLeft ? 0.4 : -0.4;
-}
+    gutterCooldown = 25;
+  }
 }
 
 //===attack===>
 function atkNear() {
-    if (waiting || gameOver) return;
-    if (atkCooldown > 0) return;
+  if (waiting || gameOver) return;
+  if (atkCooldown > 0) return;
 
-//===enemy-detect===>
-    let closest = null, closesDist = Infinity;
-    enemies.forEach(b => {
-        const d = ptDist(ball.x, ball.y, b.x, b.y);
-    if (d < closesDist) { closesDist = d; closest = b; }
-});
-    if (!closest) return;
+  //===enemy-detect===>
+  let closest = null,
+    closesDist = Infinity;
+  enemies.forEach((b) => {
+    const d = ptDist(ball.x, ball.y, b.x, b.y);
+    if (d < closesDist) {
+      closesDist = d;
+      closest = b;
+    }
+  });
+  if (!closest) return;
 
-//===attack-toward===>
-    const dx = closest.x - ball.x;
-    const dy = closest.y - ball.y;
-    const d = Math.sqrt(dx*dx + dy*dy);
-        ball.vx = (dx / d) * 10;
-        ball.vy = (dy / d) * 10;
-    idleTimer = 0;
-    atkCooldown = 300;
-
+  //===attack-toward===>
+  const dx = closest.x - ball.x;
+  const dy = closest.y - ball.y;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  ball.vx = (dx / d) * 10;
+  ball.vy = (dy / d) * 10;
+  idleTimer = 0;
+  atkCooldown = 300;
 }
 
 //===dodge===>
 let dodgeCooldown = 0;
 
 function dodge() {
-    if (waiting || gameOver) return;
-    if (dodgeCooldown > 0) return;
+  if (waiting || gameOver) return;
+  if (dodgeCooldown > 0) return;
 
-    // find nearest projectile
-    let nearest = null, nearestDist = Infinity;
-    projectiles.forEach(p => {
-        const d = ptDist(ball.x, ball.y, p.x, p.y);
-        if (d < nearestDist) { nearestDist = d; nearest = p; }
-    });
+  //===find-nearest-projectile===>
+  let nearest = null,
+    nearestDist = Infinity;
+  projectiles.forEach((p) => {
+    const d = ptDist(ball.x, ball.y, p.x, p.y);
+    if (d < nearestDist) {
+      nearestDist = d;
+      nearest = p;
+    }
+  });
 
-    const laserDist = isLaserDangerous() ? ptDist(laserTargetX, laserTargetY, ball.x, ball.y) : Infinity;
-    const perfectDodge = nearestDist < ball.r + 35 || laserDist < ball.r + 35;
+  const laserDist = isLaserDangerous()
+    ? ptDist(laserTargetX, laserTargetY, ball.x, ball.y)
+    : Infinity;
+  const perfectDodge = nearestDist < ball.r + 35 || laserDist < ball.r + 35;
 
-    ball.vx *= -0.4;
-    ball.vy *= -0.4;
+  ball.vx *= -0.4;
+  ball.vy *= -0.4;
 
-    if (nearest) {
-        // check if projectile is below the ball
-        if (nearest.y > ball.y) {
-            // dodge sideways based on ball's horizontal direction
-            ball.vx += ball.vx >= 0 ? 2 : -2;
-        } else {
-            // projectile is above or beside — dodge up
-            ball.vy -= 4;
-        }
+  if (nearest) {
+    //===check-projectile-if-below-the-ball===>
+    if (nearest.y > ball.y) {
+      //===dodge-sideways-horizontal===>
+      ball.vx += ball.vx >= 0 ? 2 : -2;
     } else {
-        
-        ball.vy -= 4;
+      //===projectile-is-above/beside-dodge-up===>
+      ball.vy -= 4;
     }
+  } else {
+    ball.vy -= 4;
+  }
+  //===dodge-cd===>
+  dodgeCooldown = 420;
+  iFrames = perfectDodge ? 90 : 65;
 
-    dodgeCooldown = 420;
-    iFrames = perfectDodge ? 90 : 65;
+  if (perfectDodge) {
+    slowMoTimer = 120;
+    perfectDodgeTextTimer = 70;
+    perfectDodgeAttackReady = true;
+    atkCooldown = 0;
+    dodgeCooldown = 0;
+  }
+}
 
-    if (perfectDodge) {
-        slowMoTimer = 120;
-        perfectDodgeTextTimer = 70;
-        perfectDodgeAttackReady = true;
-        atkCooldown = 0;
-        slashCooldown = 0;
-        dodgeCooldown = 0;
+//===ultimate===>
+function ult() {
+  if (waiting || gameOver) return;
+  if (ultCooldown > 0) return;
+
+  let closest = null,
+    closestDist = Infinity;
+  enemies.forEach((b) => {
+    const d = ptDist(ball.x, ball.y, b.x, b.y);
+    if (d < closestDist) {
+      closestDist = d;
+      closest = b;
     }
+  });
+  if (!closest) return;
+
+  ultActive = true;
+  ultStep = 0;
+  ultEnemy = closest;
+  frozenSlashes = [];
+  slowMoTimer = 9999;
+  ultCooldown = 1200;
+  ultSavedVx = ball.vx;
+  ultSavedVy = ball.vy;
+  ball.vx = 0;
+  ball.vy = 0;
+
+  // phase 1: dramatic pause (600ms)
+  setTimeout(() => {
+    // phase 2: impact effect (600ms)
+    impactFrames = 36;
+    impactX = ball.x;
+    impactY = ball.y;
+
+    // phase 3: ult steps start after effect
+    setTimeout(doUltStep, 600);
+  }, 600);
+}
+
+function doUltStep() {
+  if (!ultEnemy) return;
+  const offsets = [
+    { x: -60, y: 0 },
+    { x: 60, y: 0 },
+    { x: 0, y: -60 },
+    { x: 0, y: 60 },
+  ];
+  const o = offsets[ultStep];
+  const margin = ball.r + 14;
+  ball.x = Math.max(margin, Math.min(W - margin, ultEnemy.x + o.x));
+  ball.y = Math.max(margin, Math.min(H - margin, ultEnemy.y + o.y));
+  ball.vx = 0;
+  ball.vy = 0;
+
+  const dx = ultEnemy.x - ball.x;
+  const dy = ultEnemy.y - ball.y;
+  const angle = Math.atan2(dy, dx);
+
+  frozenSlashes.push({
+    x: ball.x,
+    y: ball.y,
+    vx: Math.cos(angle) * 8,
+    vy: Math.sin(angle) * 8,
+    life: 60,
+    hit: false,
+    angle,
+    frozen: true,
+  });
+
+  ultStep++;
+  if (ultStep < 4) {
+    setTimeout(doUltStep, 300);
+  } else {
+    setTimeout(releaseUlt, 300);
+  }
+}
+
+function releaseUlt() {
+  slowMoTimer = 0;
+  ultActive = false;
+  ball.vx = ultSavedVx;
+  ball.vy = ultSavedVy;
+  frozenSlashes.forEach((s) => {
+    s.frozen = false;
+    slashes.push(s);
+  });
+  frozenSlashes = [];
 }
 
 //===slash-atk===>
 function slashAtk() {
-    if (waiting || gameOver) return;
-    if (slashCooldown > 0) return;
+  if (waiting || gameOver) return;
+  if (slashCooldown > 0) return;
 
-    let closest = null, closesDist = Infinity;
-    enemies.forEach(b => {
-        const d = ptDist(ball.x, ball.y, b.x, b.y);
-        if (d < closesDist) { closesDist = d; closest = b; }
+  let closest = null,
+    closesDist = Infinity;
+  enemies.forEach((b) => {
+    const d = ptDist(ball.x, ball.y, b.x, b.y);
+    if (d < closesDist) {
+      closesDist = d;
+      closest = b;
+    }
+  });
+  if (!closest) return;
 
-        });
-        if (!closest) return;
+  const dx = closest.x - ball.x;
+  const dy = closest.y - ball.y;
+  const angle = Math.atan2(dy, dx);
 
-        const dx = closest.x - ball.x;
-        const dy = closest.y - ball.y;
-        const angle = Math.atan2(dy, dx);
-
-        slashQueue = [
-            { angle: angle - 0.3, delay: 0  },
-            { angle: angle,       delay: 10 },
-            { angle: angle + 0.3, delay: 20 },
-        ];
-        slashCooldown = 240;
-        slashQueueTimer = 0
+  slashQueue = [
+    { angle: angle - 0.3, delay: 0 },
+    { angle: angle, delay: 10 },
+    { angle: angle + 0.3, delay: 20 },
+  ];
+  slashCooldown = 700;
+  slashQueueTimer = 0;
 }
 
 //===update===>
 function update() {
-    if (gameOver || waiting) return;
-    if (atkCooldown > 0 ) atkCooldown--;
-    if (dodgeCooldown > 0) dodgeCooldown--;
-    if (iFrames > 0) iFrames--;
-    if (slowMoTimer > 0) slowMoTimer--;
-    if (perfectDodgeTextTimer > 0) perfectDodgeTextTimer--;
-    if (slashCooldown > 0) slashCooldown--;
-    if (slashQueue.length > 0) {
-        slashQueueTimer++;
-        if (slashQueueTimer >= slashQueue[0].delay) {
-            const s = slashQueue.shift();
-            slashes.push({
-                x: ball.x, y: ball.y,
-                vx: Math.cos(s.angle) * 8,
-                vy: Math.sin(s.angle) * 8,
-                life:40,
-                hit: false,
-                angle: s.angle
-            });
+  if (gameOver || waiting) return;
+  if (atkCooldown > 0) atkCooldown--;
+  if (dodgeCooldown > 0) dodgeCooldown--;
+  if (iFrames > 0) iFrames--;
+  if (slowMoTimer > 0) slowMoTimer--;
+  if (perfectDodgeTextTimer > 0) perfectDodgeTextTimer--;
+  if (ultCooldown > 0) ultCooldown--;
+  if (slashCooldown > 0) slashCooldown--;
+  if (slashQueue.length > 0) {
+    slashQueueTimer++;
+    if (slashQueueTimer >= slashQueue[0].delay) {
+      const s = slashQueue.shift();
+      slashes.push({
+        x: ball.x,
+        y: ball.y,
+        vx: Math.cos(s.angle) * 8,
+        vy: Math.sin(s.angle) * 8,
+        life: 40,
+        hit: false,
+        angle: s.angle,
+      });
+    }
+  }
+
+  const worldSpeed = slowMoTimer > 0 ? 0.35 : 1;
+
+  //===last-position===>
+  lastBallX = ball.x;
+  lastBallY = ball.y;
+
+  //===physics===>
+  if (!ultActive) {
+    ball.vy += 0.03;
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+  }
+
+  if (ball.y > 460) {
+    const spd = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
+    if (spd > 14) {
+      ball.vx = (ball.vx / spd) * 14;
+      ball.vy = (ball.vy / spd) * 14;
+    }
+  }
+
+  //===ball-drag===>
+  ball.vx *= 0.992;
+  if (ball.y < 400) ball.vy *= 0.995;
+
+  prevLAngle = lAngle;
+  prevRAngle = rAngle;
+  const targetL = keys["a"] ? -0.45 : 0.4;
+  const targetR = keys["d"] ? Math.PI + 0.45 : Math.PI - 0.4;
+  lAngle += (targetL - lAngle) * 0.4;
+  rAngle += (targetR - rAngle) * 0.4;
+
+  wallBounce();
+
+  //===lost-ball===>
+  if (ball.y > H - 10 && !resetting) {
+    resetting = true;
+    ballHp = Math.max(0, ballHp - 1);
+    if (score > best) {
+      best = score;
+      localStorage.setItem("best", best);
+    }
+    updateUI();
+
+    if (ballHp <= 0) {
+      gameOver = true;
+      return;
+    }
+    setTimeout(resetBall, 600);
+  }
+
+  //===flippers===>
+  flipperCollide(100, 515, lAngle, true);
+  flipperCollide(W - 100, 515, rAngle, false);
+
+  //===gutters-zone-follows-diagonal-line===>
+  if (gutterCooldown > 0) {
+    gutterCooldown--;
+  } else if (ball.y > 475 && ball.y < 510) {
+    const t = (ball.y - 475) / 35;
+    const leftX = 15 + t * (100 - 15);
+    const rightX = W - 15 - t * (W - 15 - (W - 100));
+    if (ball.x < leftX + ball.r + 18) {
+      ball.x += (leftX + ball.r + 18 - ball.x) * 0.3;
+      ball.vx = Math.abs(ball.vx) * 0.5;
+      ball.vy = -Math.abs(ball.vy) * 0.8;
+    }
+    if (ball.x > rightX - ball.r - 18) {
+      ball.x += (rightX - ball.r - 18 - ball.x) * 0.3;
+      ball.vx = -Math.abs(ball.vx) * 0.5;
+      ball.vy = -Math.abs(ball.vy) * 0.8;
+    }
+  }
+
+  //===vertical-gutters===>
+  if (ball.x < 163 + ball.r && ball.y >= 540 && ball.y < H) {
+    ball.x = 163 + ball.r;
+    ball.vx = Math.abs(ball.vx);
+  }
+  if (ball.x > W - 163 - ball.r && ball.y >= 540 && ball.y < H) {
+    ball.x = W - 163 - ball.r;
+    ball.vx = -Math.abs(ball.vx);
+  }
+
+  //===spikes===>
+  spikes.forEach((spike) => {
+    if (
+      !resetting &&
+      ball.x + ball.r > spike.x - spike.w / 2 &&
+      ball.x - ball.r < spike.x + spike.w / 2 &&
+      ball.y + ball.r > spike.y &&
+      ball.y < spike.y + spike.h
+    ) {
+      ballHp = Math.max(0, ballHp - 15);
+      updateUI();
+      resetting = true;
+      resetBall();
+    }
+  });
+
+  //===ball-drag===>
+  idleTimer++;
+  const idleDrag = Math.min(idleTimer / 600, 0.015);
+  ball.vx *= 1 - idleDrag;
+  ball.vy *= 1 - idleDrag;
+
+  //===ball-physics-drag===>
+  if (Math.abs(ball.vx) < 0.5 && Math.abs(ball.vx) > 0) {
+    ball.vx += ball.vx > 0 ? 0.02 : -0.02;
+  }
+
+  //===enemies===>
+  enemies.forEach((b) => {
+    if (!(laserActive && laserOwner === b)) {
+      b.shootTimer += worldSpeed;
+      if (b.shootTimer > 180) {
+        b.shootTimer = 0;
+        b.shootCount++;
+
+        const dx = ball.x - b.x;
+        const dy = ball.y - b.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+
+        if (b.shootCount % 5 === 0) {
+          laserActive = true;
+          laserTimer = 360;
+          laserX = b.x;
+          laserY = b.y;
+          laserTargetX = ball.x;
+          laserTargetY = ball.y;
+          laserOwner = b;
+        } else if (d > 0) {
+          projectiles.push({
+            x: b.x,
+            y: b.y,
+            vx: (dx / d) * 2.4,
+            vy: (dy / d) * 2.4,
+            r: 5,
+          });
         }
+      }
     }
 
-    const worldSpeed = slowMoTimer > 0 ? 0.35 : 1;
+    if (b.cooldown > 0) {
+      b.cooldown--;
+      if (b.hit > 0) b.hit--;
+      return;
+    }
+    if (b.hit > 0) b.hit--;
 
-//===last-position===>
-    lastBallX = ball.x;
-    lastBallY = ball.y;
+    const ex = ball.x - b.x,
+      ey = ball.y - b.y;
+    const ed = Math.sqrt(ex * ex + ey * ey);
+    if (ed < ball.r + b.r) {
+      const nx = ex / ed,
+        ny = ey / ed;
+      const spd = Math.max(Math.sqrt(ball.vx ** 2 + ball.vy ** 2), 3);
+      ball.vx = nx * spd;
+      ball.vy = ny * spd;
+      ball.x = b.x + nx * (ball.r + b.r + 1);
+      ball.y = b.y + ny * (ball.r + b.r + 1);
+      b.hit = 8;
+      b.cooldown = 20;
+      const damage = perfectDodgeAttackReady ? 3 : ballDamage;
+      if (b.hp !== undefined) b.hp -= damage;
+      if (perfectDodgeAttackReady) {
+        perfectDodgeAttackReady = false;
+        dodgeCooldown = 0;
+      }
+      if (b.hp <= 0) {
+        explosions.push({ x: b.x, y: b.y, r: 10, alpha: 1.0 });
+        laserActive = false;
+        laserOwner = null;
+        laserTimer = 0;
+        Object.assign(b, {
+          x: 35 + Math.random() * 350,
+          y: 70 + Math.random() * 300,
+          hp: b.maxHp,
+          char: [" "][Math.floor(Math.random() * 8)],
+        });
+      }
+      if (b.hp === b.maxHp) {
+        b.shootTimer = 0;
+        b.shootCount = 0;
+      }
+      addScore(100);
+    }
+  });
 
-//===physics===>
-    ball.vy += 0.030;
-    ball.x  += ball.vx;
-    ball.y  += ball.vy;
+  //===laser===>
+  if (laserActive) {
+    laserTimer -= worldSpeed;
+    if (laserTimer <= 0) {
+      if (laserOwner !== null) laserOwner.shootTimer = 0;
+      laserActive = false;
+      laserOwner = null;
+    }
 
-//===ball-drag===>
-    ball.vx *= 0.992;
-    if (ball.y < 400) ball.vy *= 0.995;
+    const laserSlow = slowMoTimer > 0 ? 0.15 : 1;
+    laserTargetX += (ball.x - laserTargetX) * 0.06 * worldSpeed * laserSlow;
+    laserTargetY += (ball.y - laserTargetY) * 0.06 * worldSpeed * laserSlow;
 
-    prevLAngle = lAngle;
-    prevRAngle = rAngle;
-    const targetL = keys['a'] ? -0.45 : 0.4;
-    const targetR = keys['d'] ? Math.PI + 0.45 : Math.PI - 0.4;
-    lAngle += (targetL - lAngle) * 0.4;
-    rAngle += (targetR - rAngle) * 0.4;
-
-    wallBounce();
-
-    // lost ball
-        if (ball.y > H - 10 && !resetting) {
-        resetting = true;
-        ballHp = Math.max(0, ballHp - 1);
-        if (score > best) {
-            best = score;
-            localStorage.setItem('best', best);
-        }
+    if (
+      isLaserDangerous() &&
+      iFrames <= 0 &&
+      ptDist(laserTargetX, laserTargetY, ball.x, ball.y) < ball.r + 12
+    ) {
+      //===dmg-per-frame===>
+      if (Math.random() < 0.04) {
+        ballHp = Math.max(0, ballHp - Math.floor(laserDamage));
+        laserDamage += 0.2;
         updateUI();
-
-        if (ballHp <= 0) { gameOver = true; return; }
-        setTimeout(resetBall, 600);
+        if (ballHp <= 0) gameOver = true;
+      }
     }
+  }
 
-    // flippers
-    flipperCollide(84,  565, lAngle, true);
-    flipperCollide(335, 565, rAngle, false);
+  //===explosions===>
+  explosions.forEach((e) => {
+    e.r += 3 * worldSpeed;
+    e.alpha -= 0.06 * worldSpeed;
+  });
+  explosions = explosions.filter((e) => e.alpha > 0);
 
-    // gutters — zone based, follows diagonal line exactly
-    if (gutterCooldown > 0) {
-        gutterCooldown--;
-    } else if (ball.y > 525 && ball.y < 570) {
-        const t = (ball.y - 525) / 40;
-        const leftX  = 15  + t * (84  - 15);
-        const rightX = 405 - t * (405 - 335);
-        if (ball.x < leftX  + ball.r + 10) {
-            ball.x  = leftX  + ball.r + 10;
-            ball.vx = 2;
-            ball.vy = Math.min(ball.vy, 1.5);
-        }
-        if (ball.x > rightX - ball.r - 10) {
-            ball.x  = rightX - ball.r - 10;
-            ball.vx = -2;
-            ball.vy = Math.min(ball.vy, 1.5);
-        }
+  //===boost===>
+  boost.forEach((t) => {
+    if (t.timer > 0) {
+      t.timer--;
+      if (t.timer === 0) t.hit = false;
+      return;
     }
-// left flipper inner edge
-        if (ball.x > 92 && ball.x < 122 && ball.y > 570 && ball.y < 600) {
-            ball.vx = Math.abs(ball.vx) * 0.8;
-            ball.x = 122;
+    if (
+      !t.hit &&
+      ball.x + ball.r > t.x &&
+      ball.x - ball.r < t.x + t.w &&
+      ball.y + ball.r > t.y &&
+      ball.y - ball.r < t.y + t.h
+    ) {
+      const hitCenter = t.x + t.w / 2;
+      ball.vy = -Math.abs(ball.vy) - 4;
+      ball.vx = ball.vx >= 0 ? 4 : -4;
+      t.hit = true;
+      t.timer = 500;
+      addScore(250);
     }
+  });
 
-// right flipper inner edge  
-        if (ball.x > 298 && ball.x < 328 && ball.y > 570 && ball.y < 600) {
-            ball.vx = -Math.abs(ball.vx) * 0.8;
-            ball.x = 298;
-}
+  //===projectiles===>
+  projectiles.forEach((p) => {
+    p.x += p.vx * worldSpeed;
+    p.y += p.vy * worldSpeed;
+  });
 
-//===ball-drag===>
-    idleTimer++;
-        const idleDrag = Math.min(idleTimer / 600, 0.015);
-            ball.vx *= (1 - idleDrag);
-            ball.vy *= (1 - idleDrag);
+  projectiles = projectiles.filter((p) => {
+    const hit = ptDist(p.x, p.y, ball.x, ball.y) < ball.r + p.r;
+    if (hit && iFrames <= 0) {
+      ballHp = Math.max(0, ballHp - (p.isLaser ? 3 : 1));
+      updateUI();
+      if (ballHp <= 0) gameOver = true;
+      return false;
+    }
+    return p.y < H && p.y > 0 && p.x > 0 && p.x < W && !hit;
+  });
 
-//===ball-physics-drag===>
-        if (Math.abs(ball.vx) < 0.5 && Math.abs(ball.vx) > 0) {
-            ball.vx += ball.vx > 0 ? 0.02: -0.02;
-        }
+  //===slashes===>
+  slashes.forEach((s) => {
+    if (s.frozen) return;
+    s.x += s.vx;
+    s.y += s.vy;
+    s.life--;
 
-//===enemies===>
-    enemies.forEach(b => {
-        if (!(laserActive && laserOwner === b)) {
-            b.shootTimer += worldSpeed;
-            if (b.shootTimer > 180) {
-                b.shootTimer = 0;
-                b.shootCount++;
-
-                const dx = ball.x - b.x;
-                const dy = ball.y - b.y;
-                const d = Math.sqrt(dx*dx + dy*dy);
-
-                if (b.shootCount % 5 === 0) {
-                    laserActive = true;
-                    laserTimer = 360;
-                    laserX = b.x;
-                    laserY = b.y;
-                    laserTargetX = ball.x;
-                    laserTargetY = ball.y;
-                    laserOwner = b;
-                } else if (d > 0) {
-                    projectiles.push({
-                        x: b.x,
-                        y: b.y,
-                        vx: (dx / d) * 2.4,
-                        vy: (dy / d) * 2.4,
-                        r: 5
-                    });
-                }
-            }
-        }
-
-        if (b.cooldown > 0) { b.cooldown--; if (b.hit > 0) b.hit--; return; }
-        if (b.hit > 0) b.hit--;
-
-        const ex = ball.x - b.x, ey = ball.y - b.y;
-        const ed = Math.sqrt(ex*ex + ey*ey);
-        if (ed < ball.r + b.r) {
-            const nx = ex/ed, ny = ey/ed;
-            const spd = Math.max(Math.sqrt(ball.vx**2 + ball.vy**2), 3);
-            ball.vx = nx * spd; ball.vy = ny * spd;
-            ball.x  = b.x + nx * (ball.r + b.r + 1);
-            ball.y  = b.y + ny * (ball.r + b.r + 1);
-            b.hit = 8; b.cooldown = 20;
-            const damage = perfectDodgeAttackReady ? 3 : ballDamage;
-            if (b.hp !== undefined) b.hp -= damage;
-            if (perfectDodgeAttackReady) {
-                perfectDodgeAttackReady = false;
-                dodgeCooldown = 0;
-            }
-            if (b.hp <= 0) {
-                explosions.push({ x: b.x, y: b.y, r: 10, alpha: 1.0 });
-                    laserActive = false;
-                    laserOwner = null;
-                    laserTimer = 0;
-                Object.assign(b, {
-                    x:    35  + Math.random() * 350,
-                    y:    70  + Math.random() * 300,
-                    hp:   b.maxHp,
-                    char: ['⭐','💥','🌟','✨','💎','🔥','💫','⚡'][Math.floor(Math.random()*8)]
-                });
-            }
-            if (b.hp === b.maxHp) {
-                b.shootTimer = 0;
-                b.shootCount = 0;
-            }
-            addScore(100);
-        }
-    });
-
-//===laser===>
-    if (laserActive) {
-        laserTimer -= worldSpeed;
-        if (laserTimer <= 0) {
-            if (laserOwner !== null) laserOwner.shootTimer = 0;
+    if (!s.hit) {
+      enemies.forEach((b) => {
+        const d = ptDist(s.x, s.y, b.x, b.y);
+        if (d < b.r + 10) {
+          s.hit = true;
+          b.hp -= 2;
+          b.hit = 8;
+          explosions.push({ x: s.x, y: s.y, r: 6, alpha: 1.0 });
+          if (b.hp <= 0) {
+            explosions.push({ x: b.x, y: b.y, r: 10, alpha: 1.0 });
             laserActive = false;
             laserOwner = null;
-        }
-
-            const laserSlow = slowMoTimer > 0 ? 0.15 : 1;
-            laserTargetX += (ball.x - laserTargetX) * 0.06 * worldSpeed * laserSlow;
-            laserTargetY += (ball.y - laserTargetY) * 0.06 * worldSpeed * laserSlow;
-
-        if (isLaserDangerous() && iFrames <= 0 && ptDist(laserTargetX, laserTargetY, ball.x, ball.y) < ball.r + 12) {
-
-//===dmg-per-frame===>
-            if (Math.random() < 0.04) {
-                ballHp = Math.max(0, ballHp - Math.floor(laserDamage));
-                laserDamage += 0.2;
-                updateUI();
-                if (ballHp <= 0) gameOver = true;
-
-            }
-        }
-    }
-
-//===explosions===>
-    explosions.forEach(e => { e.r += 3 * worldSpeed; e.alpha -= 0.06 * worldSpeed; });
-    explosions = explosions.filter(e => e.alpha > 0);
-
-//===boost===>
-    boost.forEach(t => {
-        if (t.timer > 0) { t.timer--; if (t.timer === 0) t.hit = false; return; }
-        if (!t.hit &&
-            ball.x + ball.r > t.x && ball.x - ball.r < t.x + t.w &&
-            ball.y + ball.r > t.y && ball.y - ball.r < t.y + t.h) {
-    const hitCenter = t.x + t.w / 2;
-        ball.vy = -Math.abs(ball.vy) - 4;
-        ball.vx = ball.vx >= 0 ? 4 : -4;
-            t.hit = true; t.timer = 500;
-            addScore(250);
-        }
-    });
-
-//===projectiles===>
-    projectiles.forEach(p => {
-        p.x += p.vx * worldSpeed;
-        p.y += p.vy * worldSpeed;
-    });
-
-    projectiles = projectiles.filter(p => {
-        const hit = ptDist(p.x, p.y, ball.x, ball.y) < ball.r + p.r;
-        if (hit && iFrames <= 0) {
-            ballHp = Math.max(0, ballHp - (p.isLaser ? 3 : 1));
-            updateUI()
-            if (ballHp <= 0) gameOver = true;
-            return false;
-        }
-        return p.y < H && p.y > 0 && p.x > 0 && p.x < W && !hit;
-    });
-
-//===slashes===>
-    slashes.forEach(s => {
-        s.x += s.vx;
-        s.y += s.vy;
-        s.life--;
-
-        if (!s.hit) {
-            enemies.forEach(b => {
-                const d = ptDist(s.x, s.y, b.x, b.y);
-                if (d < b.r + 10) {
-                    s.hit =true;
-                    b.hp -= 2;
-                    b.hit = 8;
-                    explosions.push({ x: s.x, y: s.y, r: 6, alpha: 1.0 });
-                    if (b.hp <= 0) {
-                        explosions.push({ x: b.x, y: b.y, r: 10, alpha: 1.0});
-                        laserActive = false;
-                        laserOwner = null
-                        laserTimer = 0;
-                        Object.assign(b, {
-                            x: 35 + Math.random() * 350,
-                            y: 70 + Math.random() * 300,
-                            hp: b.maxHp,
-                            char: ['⭐','💥','🌟','✨','💎','🔥','💫','⚡'][Math.floor(Math.random()*8)]
-                        });
-                    }
-                    addScore(50);
-                }
+            laserTimer = 0;
+            Object.assign(b, {
+              x: 35 + Math.random() * 350,
+              y: 70 + Math.random() * 300,
+              hp: b.maxHp,
+              char: " ",
             });
+          }
+          addScore(50);
         }
-    });
-    slashes = slashes.filter(s => s.life > 0 && !s.hit);
+      });
+    }
+  });
+  slashes = slashes.filter((s) => s.life > 0 && !s.hit);
 }
 
-// --- draw ---
+//===draw-flip===>
 function drawFlipper(cx, cy, angle) {
-    const ex = cx + Math.cos(angle) * 70;
-    const ey = cy + Math.sin(angle) * 70;
-    ctx.strokeStyle = '#f5f5f5';
-    ctx.lineWidth   = 12;
-    ctx.lineCap     = 'round';
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(ex, ey);
-    ctx.stroke();
+  const ex = cx + Math.cos(angle) * 70;
+  const ey = cy + Math.sin(angle) * 70;
+  ctx.strokeStyle = "#f5f5f5";
+  ctx.lineWidth = 12;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(ex, ey);
+  ctx.stroke();
 }
 
 function draw() {
-    ctx.fillStyle = '#181818';
-    ctx.fillRect(0, 0, W, H);
-    drawGrid();
+  ctx.fillStyle = "#181818";
+  ctx.fillRect(0, 0, W, H);
+  drawGrid();
 
-    if (slowMoTimer > 0) {
-        ctx.fillStyle = 'rgba(80, 190, 255, 0.08)';
-        ctx.fillRect(0, 0, W, H);
+  if (slowMoTimer > 0) {
+    ctx.fillStyle = "rgba(80, 190, 255, 0.08)";
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  if (impactFrames > 0) {
+    impactFrames--;
+    const progress = 1 - impactFrames / 60;
+
+    // screen flash fades out
+    ctx.fillStyle = `rgba(255, 255, 255, ${(1 - progress) * 0.5})`;
+    ctx.fillRect(0, 0, W, H);
+
+    // impact lines radiating outward
+    const lineCount = 12;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < lineCount; i++) {
+      const angle = (i / lineCount) * Math.PI * 2;
+      const innerR = 20 + progress * 30;
+      const outerR = 60 + progress * 100;
+      ctx.strokeStyle = `rgba(255, 220, 50, ${(1 - progress) * 0.9})`;
+      ctx.beginPath();
+      ctx.moveTo(
+        impactX + Math.cos(angle) * innerR,
+        impactY + Math.sin(angle) * innerR,
+      );
+      ctx.lineTo(
+        impactX + Math.cos(angle) * outerR,
+        impactY + Math.sin(angle) * outerR,
+      );
+      ctx.stroke();
     }
 
-    // border
-    ctx.strokeStyle = '#f5f5f5';
-    ctx.lineWidth   = 15;
-    ctx.strokeRect(14, 14, W-28, H-28);
-
-    // gutters
-    ctx.strokeStyle = '#f5f5f5';
-    ctx.lineWidth   = 14;
-    ctx.lineCap     = 'round';
+    // expanding ring
     ctx.beginPath();
-    ctx.moveTo(15, 525); ctx.lineTo(84, 565);
-    ctx.moveTo(405, 525); ctx.lineTo(335, 565);
+    ctx.arc(impactX, impactY, 20 + progress * 100, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 220, 50, ${(1 - progress) * 0.8})`;
+    ctx.lineWidth = 4;
     ctx.stroke();
 
-    // targets
-    boost.forEach(t => {
-        ctx.save();
-        ctx.beginPath();
-        ctx.roundRect(t.x, t.y, t.w, t.h, 5);
-        ctx.fillStyle   = t.hit ? '#0a3028' : '#422222';
-        ctx.strokeStyle = t.hit ? '#1D9E75' : '#cc5533';
-        ctx.lineWidth   = 3.5;
-        ctx.fill(); ctx.stroke();
-        ctx.restore();
-        drawChar(t.char, t.x + t.w/2, t.y + t.h/2, 13);
-    });
+    // inner glow ring stays visible the whole duration
+    ctx.beginPath();
+    ctx.arc(impactX, impactY, 22, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 220, 50, ${0.6 - progress * 0.4})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
 
-    // bumpers
-    enemies.forEach(b => {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
-        ctx.fillStyle   = b.hit > 0 ? '#f5f5f5' : '#4e4e4e';
-        ctx.strokeStyle = b.hit > 0 ? '#505050' : '#f5f5f5';
-        ctx.lineWidth   = 2.5;
-        ctx.fill(); ctx.stroke();
-        if (b.hit > 0) {
-            ctx.shadowColor = '#686868';
-            ctx.shadowBlur  = 14;
-            ctx.stroke();
-            ctx.shadowBlur  = 0;
-        }
-        ctx.restore();
-        drawChar(b.char, b.x, b.y, b.r * 1.1);
-        if (b.hp !== undefined) {
-            const hpBarW = 44;
-            const hpBarH = 5;
-            const hpBarX = b.x - hpBarW / 2;
-            const hpBarY = b.y + b.r + 9;
-            const hpPercent = Math.max(0, b.hp / b.maxHp);
+  //===border===>
+  ctx.strokeStyle = "#f5f5f5";
+  ctx.lineWidth = 15;
+  ctx.strokeRect(14, 14, W - 28, H - 28);
 
-            ctx.fillStyle = '#211';
-            ctx.fillRect(hpBarX, hpBarY, hpBarW, hpBarH);
-            ctx.fillStyle = hpPercent > 0.4 ? '#44ff88' : '#ff4444';
-            ctx.fillRect(hpBarX, hpBarY, hpBarW * hpPercent, hpBarH);
-            ctx.strokeStyle = '#f5f5f5';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(hpBarX, hpBarY, hpBarW, hpBarH);
-        }
-    });
+  //===gutters===>
+  ctx.strokeStyle = "#f5f5f5";
+  ctx.lineWidth = 14;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(15, 480);
+  ctx.lineTo(100, 515);
+  ctx.moveTo(W - 15, 480);
+  ctx.lineTo(W - 100, 515);
+  ctx.stroke();
 
-    // explosions
-    explosions.forEach(e => {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, e.r, 0, Math.PI*2);
-        ctx.strokeStyle = `rgba(200,180,255,${e.alpha})`;
-        ctx.lineWidth   = 3;
-        ctx.stroke();
-        ctx.restore();
-    });
+  // vertical gutters
+  ctx.beginPath();
+  ctx.moveTo(163, 545);
+  ctx.lineTo(163, H);
+  ctx.moveTo(W - 163, 545);
+  ctx.lineTo(W - 163, H);
+  ctx.stroke();
 
-//===projectiles===>
-    projectiles.forEach(p => {
+  // spike
+  spikes.forEach((spike) => {
+    ctx.fillStyle = "#ff4444";
+    ctx.beginPath();
+    ctx.moveTo(spike.x, spike.y);
+    ctx.lineTo(spike.x - spike.w / 2, spike.y + spike.h);
+    ctx.lineTo(spike.x + spike.w / 2, spike.y + spike.h);
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  //===targets===>
+  boost.forEach((t) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(t.x, t.y, t.w, t.h, 5);
+    ctx.fillStyle = t.hit ? "#0a3028" : "#422222";
+    ctx.strokeStyle = t.hit ? "#1D9E75" : "#cc5533";
+    ctx.lineWidth = 3.5;
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    drawChar(t.char, t.x + t.w / 2, t.y + t.h / 2, 13);
+  });
+
+  //===bumpers===>
+  enemies.forEach((b) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fillStyle = b.hit > 0 ? "#f5f5f5" : "#4e4e4e";
+    ctx.strokeStyle = b.hit > 0 ? "#505050" : "#f5f5f5";
+    ctx.lineWidth = 2.5;
+    ctx.fill();
+    ctx.stroke();
+    if (b.hit > 0) {
+      ctx.shadowColor = "#686868";
+      ctx.shadowBlur = 14;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+    drawChar(b.char, b.x, b.y, b.r * 1.1);
+    if (b.hp !== undefined) {
+      const hpBarW = 44;
+      const hpBarH = 5;
+      const hpBarX = b.x - hpBarW / 2;
+      const hpBarY = b.y + b.r + 9;
+      const hpPercent = Math.max(0, b.hp / b.maxHp);
+
+      ctx.fillStyle = "#211";
+      ctx.fillRect(hpBarX, hpBarY, hpBarW, hpBarH);
+      ctx.fillStyle = hpPercent > 0.4 ? "#44ff88" : "#ff4444";
+      ctx.fillRect(hpBarX, hpBarY, hpBarW * hpPercent, hpBarH);
+      ctx.strokeStyle = "#f5f5f5";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(hpBarX, hpBarY, hpBarW, hpBarH);
+    }
+  });
+
+  //===explosions===>
+  explosions.forEach((e) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(200,180,255,${e.alpha})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  //===projectiles===>
+  projectiles.forEach((p) => {
     ctx.save();
     if (p.isLaser) {
-        ctx.strokeStyle = '#ff8800';
-        ctx.lineWidth = 10;
-        ctx.shadowColor = '#ff4400';
-        ctx.shadowBlur = 15;
+      ctx.strokeStyle = "#ff8800";
+      ctx.lineWidth = 10;
+      ctx.shadowColor = "#ff4400";
+      ctx.shadowBlur = 15;
     } else {
-        ctx.strokeStyle = '#ff4444';
-        ctx.lineWidth = 4;
+      ctx.strokeStyle = "#ff4444";
+      ctx.lineWidth = 4;
     }
-    ctx.lineCap = 'round';
+    ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
     ctx.lineTo(p.x - p.vx * 6, p.y - p.vy * 6);
     ctx.stroke();
     ctx.shadowBlur = 0;
     ctx.restore();
-});
+  });
 
-//===ball-atk===>
-    const fill = atkCooldown > 0 ? (atkCooldown / 300) * 100 : 100;
-        document.getElementById('atkFill').style.width = fill + '%';
-        document.getElementById('atkFill').style.background = atkCooldown > 0 ? '#ff4444' : '#44ff88';
-        document.getElementById('atkLabel').textContent = atkCooldown > 0 ? Math.ceil(atkCooldown/60) + 's' : 'ATK';
+  //===ball-atk===>
+  const fill = atkCooldown > 0 ? (atkCooldown / 300) * 100 : 100;
+  document.getElementById("atkFill").style.width = fill + "%";
+  document.getElementById("atkFill").style.background =
+    atkCooldown > 0 ? "#ff4444" : "#44ff88";
+  document.getElementById("atkLabel").textContent =
+    atkCooldown > 0 ? Math.ceil(atkCooldown / 60) + "s" : "ATK";
 
-//===dodge===>
-    const dodgeFill = dodgeCooldown > 0 ? (dodgeCooldown / 500) * 100 : 100;
-        document.getElementById('dodgeFill').style.width = dodgeFill + '%';
-        document.getElementById('dodgeFill').style.background = dodgeCooldown > 0 ? '#4444ff' : '#44ccff';
-        document.getElementById('dodgeLabel').textContent = dodgeCooldown > 0 ? Math.ceil(dodgeCooldown/60) + 's' : 'DGE';
+  //===dodge===>
+  const dodgeFill = dodgeCooldown > 0 ? (dodgeCooldown / 500) * 100 : 100;
+  document.getElementById("dodgeFill").style.width = dodgeFill + "%";
+  document.getElementById("dodgeFill").style.background =
+    dodgeCooldown > 0 ? "#4444ff" : "#44ccff";
+  document.getElementById("dodgeLabel").textContent =
+    dodgeCooldown > 0 ? Math.ceil(dodgeCooldown / 60) + "s" : "DGE";
 
-//===Q-skill===>
-    const slashFill = slashCooldown > 0 ? (slashCooldown / 240) * 100 : 100;
-    if (document.getElementById('slashFill')) {
-        document.getElementById('slashFill').style.width = slashFill + '%';
-        document.getElementById('slashFill').style.background = slashCooldown > 0 ? '#4444ff' : '#44ccff';
-    }
-    if (document.getElementById('slashText')) {
-        document.getElementById('slashText').textContent = slashCooldown > 0 ? Math.ceil(slashCooldown/60) + 's' : 'SQ1';
-    }
-//===laser===>
-    if (laserActive) {
-        ctx.save();
-        ctx.strokeStyle = `rgba(255, 136, 0, ${laserTimer / 360})`;
-        ctx.lineWidth = 13;
-        ctx.shadowColor = '#ff4400';
-        ctx.shadowBlur = 20;
-        ctx.setLineDash([8, 4]);
-        ctx.beginPath();
-        ctx.moveTo(laserX, laserY);
-        ctx.lineTo(laserTargetX, laserTargetY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.shadowBlur = 0;
-    
-    // laser tip circle
-        ctx.beginPath();
-        ctx.arc(laserTargetX, laserTargetY, 15, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(255, 80, 0, ${laserTimer / 360})`;
-        ctx.fill();
-        ctx.restore();
-}
+  //===Q-skill===>
+  const slashFill = slashCooldown > 0 ? (slashCooldown / 700) * 100 : 100;
+  if (document.getElementById("slashFill")) {
+    document.getElementById("slashFill").style.width = slashFill + "%";
+    document.getElementById("slashFill").style.background =
+      slashCooldown > 0 ? "#440000" : "#ff0000";
+  }
+  if (document.getElementById("slashText")) {
+    document.getElementById("slashText").textContent =
+      slashCooldown > 0 ? Math.ceil(slashCooldown / 60) + "s" : "SQ1";
+  }
 
-    // flippers
-    drawFlipper(84,  565, lAngle);
-    drawFlipper(335, 565, rAngle);
+  //===ULT===>
+  const ultFill = ultCooldown > 0 ? (ultCooldown / 1200) * 100 : 100;
+  if (document.getElementById("ultFill")) {
+    document.getElementById("ultFill").style.width = ultFill + "%";
+    document.getElementById("ultFill").style.background =
+      ultCooldown > 0 ? "#004400" : "#00ff88";
+  }
+  if (document.getElementById("ultText")) {
+    document.getElementById("ultText").textContent =
+      ultCooldown > 0 ? Math.ceil(ultCooldown / 60) + "s" : "ULT";
+  }
+  //===laser===>
+  if (laserActive) {
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 136, 0, ${laserTimer / 360})`;
+    ctx.lineWidth = 13;
+    ctx.shadowColor = "#ff4400";
+    ctx.shadowBlur = 20;
+    ctx.setLineDash([8, 4]);
+    ctx.beginPath();
+    ctx.moveTo(laserX, laserY);
+    ctx.lineTo(laserTargetX, laserTargetY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
 
+    //===laser-tip-circle===>
+    ctx.beginPath();
+    ctx.arc(laserTargetX, laserTargetY, 15, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 80, 0, ${laserTimer / 360})`;
+    ctx.fill();
+    ctx.restore();
+  }
 
-//===slashes===> 
-    slashes.forEach(s => {
+  //===flippers===>
+  drawFlipper(100, 515, lAngle);
+  drawFlipper(W - 100, 515, rAngle);
+
+  //===slashes===>
+  slashes.forEach((s) => {
     ctx.save();
     ctx.strokeStyle = `rgba(180, 220, 255, ${s.life / 40})`;
     ctx.lineWidth = 3;
-    ctx.shadowColor = '#44ccff';
+    ctx.shadowColor = "#44ccff";
     ctx.shadowBlur = 8;
     ctx.beginPath();
-    ctx.arc(s.x, s.y, 14, s.angle - Math.PI/2, s.angle + Math.PI/2);
+    ctx.arc(s.x, s.y, 14, s.angle - Math.PI / 2, s.angle + Math.PI / 2);
     ctx.stroke();
     ctx.shadowBlur = 0;
     ctx.restore();
-});
+  });
 
-    // ball
+  frozenSlashes.forEach((s) => {
     ctx.save();
+    ctx.strokeStyle = `rgba(255, 220, 100, 0.9)`;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = "#ffcc00";
+    ctx.shadowBlur = 12;
     ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
-    ctx.fillStyle   = iFrames > 0 ? '#8ecfff' : '#6d6d6d';
-    ctx.strokeStyle = iFrames > 0 ? '#d9f4ff' : '#f5f5f5';
-    ctx.lineWidth   = 2;
-    ctx.fill(); ctx.stroke();
+    ctx.arc(s.x, s.y, 14, s.angle - Math.PI / 2, s.angle + Math.PI / 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
     ctx.restore();
-    drawChar('A', ball.x, ball.y, ball.r * 1.7);
+  });
 
-    if (perfectDodgeTextTimer > 0) {
-        const textAlpha = Math.min(1, perfectDodgeTextTimer / 30);
-        ctx.save();
-        ctx.globalAlpha = textAlpha;
-        ctx.fillStyle = '#d9f4ff';
-        ctx.font = '700 13px system-ui';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('PERFECT DODGE', ball.x, ball.y - 34);
-        ctx.restore();
-    }
+  //===ball===>
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.fillStyle = iFrames > 0 ? "#8ecfff" : "#6d6d6d";
+  ctx.strokeStyle = iFrames > 0 ? "#d9f4ff" : "#f5f5f5";
+  ctx.lineWidth = 2;
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  drawChar("A", ball.x, ball.y, ball.r * 1.7);
 
-    // waiting
-    if (waiting && !gameOver) {
-        aimPhase += 0.025;
-        const angle = getLaunchAngle();
-        const arrowLen = 76;
-        const arrowStartX = ball.x;
-        const arrowStartY = ball.y - ball.r - 8;
-        const arrowEndX = arrowStartX + Math.cos(angle) * arrowLen;
-        const arrowEndY = arrowStartY + Math.sin(angle) * arrowLen;
-        const headSize = 10;
+  if (perfectDodgeTextTimer > 0) {
+    const textAlpha = Math.min(1, perfectDodgeTextTimer / 30);
+    ctx.save();
+    ctx.globalAlpha = textAlpha;
+    ctx.fillStyle = "#d9f4ff";
+    ctx.font = "700 13px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("PERFECT DODGE", ball.x, ball.y - 34);
+    ctx.restore();
+  }
 
-        ctx.save();
-        ctx.strokeStyle = '#44ccff';
-        ctx.fillStyle = '#44ccff';
-        ctx.shadowColor = '#44ccff';
-        ctx.shadowBlur = 12;
-        ctx.lineWidth = 4;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(arrowStartX, arrowStartY);
-        ctx.lineTo(arrowEndX, arrowEndY);
-        ctx.stroke();
+  //===waiting===>
+  if (waiting && !gameOver) {
+    aimPhase += 0.025;
+    const angle = getLaunchAngle();
+    const arrowLen = 76;
+    const arrowStartX = ball.x;
+    const arrowStartY = ball.y - ball.r - 8;
+    const arrowEndX = arrowStartX + Math.cos(angle) * arrowLen;
+    const arrowEndY = arrowStartY + Math.sin(angle) * arrowLen;
+    const headSize = 10;
 
-        ctx.beginPath();
-        ctx.moveTo(arrowEndX, arrowEndY);
-        ctx.lineTo(
-            arrowEndX - Math.cos(angle - 0.45) * headSize,
-            arrowEndY - Math.sin(angle - 0.45) * headSize
-        );
-        ctx.lineTo(
-            arrowEndX - Math.cos(angle + 0.45) * headSize,
-            arrowEndY - Math.sin(angle + 0.45) * headSize
-        );
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
+    ctx.save();
+    ctx.strokeStyle = "#44ccff";
+    ctx.fillStyle = "#44ccff";
+    ctx.shadowColor = "#44ccff";
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(arrowStartX, arrowStartY);
+    ctx.lineTo(arrowEndX, arrowEndY);
+    ctx.stroke();
 
-        ctx.fillStyle    = 'rgba(243, 243, 243, 0.85)';
-        ctx.font         = '500 14px system-ui';
-        ctx.textAlign    = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('press SPACE to launch', W/2, H - 160);
-    }
+    ctx.beginPath();
+    ctx.moveTo(arrowEndX, arrowEndY);
+    ctx.lineTo(
+      arrowEndX - Math.cos(angle - 0.45) * headSize,
+      arrowEndY - Math.sin(angle - 0.45) * headSize,
+    );
+    ctx.lineTo(
+      arrowEndX - Math.cos(angle + 0.45) * headSize,
+      arrowEndY - Math.sin(angle + 0.45) * headSize,
+    );
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
 
-    // game over
-    if (gameOver) {
-        ctx.fillStyle = 'rgba(8,6,24,0.88)';
-        ctx.fillRect(0, 0, W, H);
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#f5f5f5'; ctx.font = '700 28px system-ui';
-        ctx.fillText('GAME OVER', W/2, H/2 - 40);
-        ctx.fillStyle = '#ffffff'; ctx.font = '400 16px system-ui';
-        ctx.fillText('Score: ' + score, W/2, H/2);
-        ctx.fillStyle = '#7fc9ff';
-        ctx.fillText('Best: '  + best,  W/2, H/2 + 28);
-        ctx.fillStyle = '#f5f5f5'; ctx.font = '400 13px system-ui';
-        ctx.fillText('press SPACE to play again', W/2, H/2 + 68);
-    }
+    ctx.fillStyle = "rgba(243, 243, 243, 0.85)";
+    ctx.font = "500 14px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("press SPACE to launch", W / 2, H - 160);
+  }
+
+  //===game-over===>
+  if (gameOver) {
+    ctx.fillStyle = "rgba(8,6,24,0.88)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#f5f5f5";
+    ctx.font = "700 28px system-ui";
+    ctx.fillText("GAME OVER", W / 2, H / 2 - 40);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "400 16px system-ui";
+    ctx.fillText("Score: " + score, W / 2, H / 2);
+    ctx.fillStyle = "#7fc9ff";
+    ctx.fillText("Best: " + best, W / 2, H / 2 + 28);
+    ctx.fillStyle = "#f5f5f5";
+    ctx.font = "400 13px system-ui";
+    ctx.fillText("press SPACE to play again", W / 2, H / 2 + 68);
+  }
 }
 
-function loop() { update(); draw(); requestAnimationFrame(loop); }
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
 updateUI();
 loop();
